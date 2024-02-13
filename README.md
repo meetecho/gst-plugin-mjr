@@ -52,7 +52,7 @@ Copying that library to the GStreamer plugins folder (e.g., `/usr/lib64/gstreame
 
 ## Testing the muxer
 
-The 'mjrmux` element is quite simple, since it just expects RTP packets on the way in, and will write them in the MJR format. As such, it will typically be used in conjunction with a `filesink` to write the MJR to file. Notice that it needs access to the RTP caps in order to figure out what to write in the header, e.g.:
+The `mjrmux` element is quite simple, since it just expects RTP packets on the way in, and will write them in the MJR format. As such, it will typically be used in conjunction with a `filesink` to write the MJR to file. Notice that it needs access to the RTP caps in order to figure out what to write in the header, e.g.:
 
 	gst-launch-1.0 autovideosrc ! videoconvert ! vp8enc ! rtpvp8pay ! \
 		mjrmux ! filesink location=test.mjr
