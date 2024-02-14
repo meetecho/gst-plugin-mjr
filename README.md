@@ -28,7 +28,7 @@ The `mjrmux` supports the following properties:
 
 ## Building the plugin
 
-To build the plugin, you'll need to install the development libraries of GStreamer and Jansson, plus `meson` and `ninja` for building it:
+To build the plugin, you'll need to install the development libraries of GStreamer and `json-glib`, plus `meson` and `ninja` for building it:
 
 	meson builddir
 	ninja -C builddir/

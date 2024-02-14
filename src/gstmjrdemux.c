@@ -62,7 +62,7 @@
 
 #include <gst/gst.h>
 
-#include <jansson.h>
+#include <json-glib/json-glib.h>
 
 #include "gstmjrdemux.h"
 #include "gstmjrutils.h"
@@ -312,25 +312,34 @@ static GstFlowReturn gst_mjr_demux_chain(GstPad *pad, GstObject *parent, GstBuff
 				demux->buffer[demux->reading] = '\0';
 				if(!demux->silent)
 					g_print("[mjrdemux] JSON header: %s\n", demux->buffer);
-				json_error_t error;
-				json_t *info = json_loads(demux->buffer, 0, &error);
-				if(info == NULL) {
+				GError *error = NULL;
+				JsonParser *parser = json_parser_new();
+				if(!json_parser_load_from_data(parser, demux->buffer, -1, &error)) {
 					GST_ELEMENT_ERROR(demux, STREAM, DECODE, (NULL), ("Invalid JSON header."));
 					ret = GST_FLOW_ERROR;
+					g_object_unref(parser);
 					break;
 				}
-				json_t *type = json_object_get(info, "t");
-				json_t *codec = json_object_get(info, "c");
-				json_t *created = json_object_get(info, "s");
-				json_t *written = json_object_get(info, "u");
-				if(!type || !json_is_string(type) || !codec || !json_is_string(codec) ||
-						!created || !json_is_integer(created) || !written || !json_is_integer(written)) {
+				JsonReader *reader = json_reader_new(json_parser_get_root(parser));
+				json_reader_read_member(reader, "t");
+				const gchar *t = json_reader_get_string_value(reader);
+				json_reader_end_member(reader);
+				json_reader_read_member(reader, "c");
+				const gchar *c = json_reader_get_string_value(reader);
+				json_reader_end_member(reader);
+				json_reader_read_member(reader, "s");
+				guint64 s = json_reader_get_int_value(reader);
+				json_reader_end_member(reader);
+				json_reader_read_member(reader, "u");
+				guint64 u = json_reader_get_int_value(reader);
+				json_reader_end_member(reader);
+				if(!t || !c || !s || !u) {
 					GST_ELEMENT_ERROR(demux, STREAM, DECODE, (NULL), ("Invalid JSON header."));
 					ret = GST_FLOW_ERROR;
-					json_decref(info);
+					g_object_unref(reader);
+					g_object_unref(parser);
 					break;
 				}
-				const char *t = json_string_value(type);
 				if(!strcasecmp(t, "v")) {
 					demux->video = TRUE;
 				} else if(!strcasecmp(t, "a")) {
@@ -338,20 +347,22 @@ static GstFlowReturn gst_mjr_demux_chain(GstPad *pad, GstObject *parent, GstBuff
 				} else if(!strcasecmp(t, "d")) {
 					GST_ELEMENT_ERROR(demux, STREAM, DECODE, (NULL), ("Unsupported media format."));
 					ret = GST_FLOW_ERROR;
-					json_decref(info);
+					g_object_unref(reader);
+					g_object_unref(parser);
 					break;
 				}
-				const char *c = json_string_value(codec);
 				demux->codec = gst_mjr_get_codec(c, &demux->video);
 				if(!demux->codec) {
 					GST_ELEMENT_ERROR(demux, STREAM, DECODE, (NULL), ("Unsupported codec (%s).", c));
 					ret = GST_FLOW_ERROR;
-					json_decref(info);
+					g_object_unref(reader);
+					g_object_unref(parser);
 					break;
 				}
-				demux->created = json_integer_value(created);
-				demux->written = json_integer_value(written);
-				json_decref(info);
+				demux->created = s;
+				demux->written = u;
+				g_object_unref(reader);
+				g_object_unref(parser);
 			}
 			/* Done, change state */
 			demux->state = gst_mjr_demux_state_waiting_packet;

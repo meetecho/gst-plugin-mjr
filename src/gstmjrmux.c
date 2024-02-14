@@ -62,7 +62,7 @@
 
 #include <gst/gst.h>
 
-#include <jansson.h>
+#include <json-glib/json-glib.h>
 
 #include "gstmjrmux.h"
 #include "gstmjrutils.h"
@@ -254,14 +254,24 @@ static GstFlowReturn gst_mjr_mux_chain(GstPad *pad, GstObject *parent, GstBuffer
 		GstBuffer *outbuf = gst_buffer_new_memdup(header, strlen(header));
 		GstFlowReturn res = gst_pad_push(mux->srcpad, outbuf);
 		/* Create a JSON header */
-		json_t *info = json_object();
-		const gchar *type = mux->video ? "v" : "a";
-		json_object_set_new(info, "t", json_string(type));
-		json_object_set_new(info, "c", json_string(gst_mjr_codec_string(mux->codec)));
-		json_object_set_new(info, "s", json_integer(mux->created));
-		json_object_set_new(info, "u", json_integer(mux->written));
-		gchar *info_text = json_dumps(info, JSON_PRESERVE_ORDER);
-		json_decref(info);
+		JsonBuilder *builder = json_builder_new();
+		json_builder_begin_object(builder);
+		json_builder_set_member_name (builder, "t");
+		json_builder_add_string_value(builder, (mux->video ? "v" : "a"));
+		json_builder_set_member_name (builder, "c");
+		json_builder_add_string_value(builder, gst_mjr_codec_string(mux->codec));
+		json_builder_set_member_name (builder, "s");
+		json_builder_add_int_value(builder, mux->created);
+		json_builder_set_member_name (builder, "u");
+		json_builder_add_int_value(builder, mux->written);
+		json_builder_end_object (builder);
+		JsonGenerator *gen = json_generator_new();
+		JsonNode * root = json_builder_get_root(builder);
+		json_generator_set_root(gen, root);
+		gchar *info_text = json_generator_to_data(gen, NULL);
+		json_node_free(root);
+		g_object_unref(gen);
+		g_object_unref(builder);
 		if(info_text == NULL) {
 			/* Error generating JSON string */
 			GST_ELEMENT_ERROR(mux, STREAM, ENCODE, (NULL), ("Invalid data."));

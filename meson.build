@@ -12,7 +12,7 @@ gst_dep = dependency('gstreamer-1.0', version : '>=1.19',
 	required : true, fallback : ['gstreamer', 'gst_dep'])
 gstbase_dep = dependency('gstreamer-base-1.0', version : '>=1.19',
 	fallback : ['gstreamer', 'gst_base_dep'])
-jansson_dep = dependency('jansson', version : '>=2.5', required : true)
+json_dep = dependency('json-glib-1.0', version : '>=1.6.6', fallback : ['json-glib', 'json_glib_dep'], required : true)
 
 plugin_c_args = ['-DHAVE_CONFIG_H']
 
@@ -36,7 +36,7 @@ gstmjr_sources = [
 gstmjrexample = library('gstmjr',
 	gstmjr_sources,
 	c_args: plugin_c_args,
-	dependencies : [gst_dep, gstbase_dep, jansson_dep],
+	dependencies : [gst_dep, gstbase_dep, json_dep],
 	install : true,
 	install_dir : plugins_install_dir,
 )
