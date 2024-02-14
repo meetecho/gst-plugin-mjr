@@ -16,7 +16,15 @@ The GStreamer MJR plugin provides two different elements:
 * `mjrdemux`: a Janus MJR Demuxer;
 * `mjrmux`: a Janus MJR Muxer.
 
-Both elements are quite barebones at the moment, and only support a single property called `silent` (which is `true` by default). Setting it to `false` will enable a verbose debugging of what they're doing internally.
+The `mjrdemux` supports the following properties:
+
+* `silent` (boolean): Don't produce verbose output (`true` by default);
+* `ssrc` (unsigned int): Use a specific SSRC for the outgoing RTP traffic (by default the demuxer just uses the same SSRC used in the MJR file);
+* `randomize-ssrc` (boolean): Use a random SSRC for the outgoing RTP traffic (by default the demuxer just uses the same SSRC used in the MJR file).
+
+The `mjrmux` supports the following properties:
+
+* `silent` (boolean): Don't produce verbose output (`true` by default).
 
 ## Building the plugin
 
@@ -49,6 +57,8 @@ Plugin Details:
 Copying that library to the GStreamer plugins folder (e.g., `/usr/lib64/gstreamer-1.0/`) should make it usable to all applications:
 
 	gst-inspect-1.0 mjr
+
+The available elements (`mjrdemux` and `mjrmux`) can also be inspected, for more info on capabilities and available properties.
 
 ## Testing the muxer
 
