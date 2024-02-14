@@ -73,7 +73,9 @@ enum {
 
 enum {
 	PROP_0,
-	PROP_SILENT
+	PROP_SILENT,
+	PROP_SSRC,
+	PROP_RANDOM_SSRC
 };
 
 /* Pad templates: we take buffers in and shoot RTP out */
@@ -116,8 +118,14 @@ static void gst_mjr_demux_class_init(GstMjrDemuxClass *klass) {
 	gobject_class->get_property = gst_mjr_demux_get_property;
 
 	g_object_class_install_property (gobject_class, PROP_SILENT,
-		g_param_spec_boolean ("silent", "Silent", "Produce verbose output ?",
+		g_param_spec_boolean("silent", "Silent", "Produce verbose output",
 			FALSE, G_PARAM_READWRITE));
+	g_object_class_install_property (gobject_class, PROP_SSRC,
+		g_param_spec_uint("ssrc", "SSRC", "Use a specific SSRC for the outgoing RTP traffic, instead of the one in the MJR file",
+			0, G_MAXUINT32, 0, G_PARAM_READWRITE));
+	g_object_class_install_property (gobject_class, PROP_RANDOM_SSRC,
+		g_param_spec_boolean("randomize-ssrc", "Random SSRC", "Use a random SSRC for the outgoing RTP traffic, instead of the one in the MJR file",
+			FALSE, G_PARAM_WRITABLE));
 
 	gst_element_class_set_details_simple(gstelement_class,
 		"Janus MJR Demuxer",
@@ -145,6 +153,7 @@ static void gst_mjr_demux_init(GstMjrDemux *demux) {
 	demux->initialized = FALSE;
 	demux->last_ts = 0;
 	demux->timestamp = 0;
+	demux->out_ssrc = 0;
 	/* Setup pads and chain */
 	demux->sinkpad = gst_pad_new_from_static_template(&sinktemplate, "sink");
 	gst_pad_set_chain_function(demux->sinkpad,
@@ -162,6 +171,12 @@ static void gst_mjr_demux_set_property(GObject *object, guint prop_id, const GVa
 		case PROP_SILENT:
 			demux->silent = g_value_get_boolean(value);
 			break;
+		case PROP_SSRC:
+			demux->out_ssrc = g_value_get_uint(value);
+			break;
+		case PROP_RANDOM_SSRC:
+			demux->out_ssrc = g_random_int();
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
 			break;
@@ -175,6 +190,9 @@ static void gst_mjr_demux_get_property(GObject *object, guint prop_id, GValue *v
 	switch(prop_id) {
 		case PROP_SILENT:
 			g_value_set_boolean(value, demux->silent);
+			break;
+		case PROP_SSRC:
+			g_value_set_uint(value, demux->out_ssrc);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -335,16 +353,6 @@ static GstFlowReturn gst_mjr_demux_chain(GstPad *pad, GstObject *parent, GstBuff
 				demux->written = json_integer_value(written);
 				json_decref(info);
 			}
-			//~ /* Update the caps on the source pad */
-			//~ GstCaps *newcaps = gst_caps_new_simple("application/x-rtp",
-				//~ "media", G_TYPE_STRING, (demux->video ? "video" : "audio"),
-				//~ "encoding-name", G_TYPE_STRING, gst_mjr_get_encoding_name(demux->codec),
-				//~ "clock-rate", G_TYPE_INT, gst_mjr_get_clock_rate(demux->codec),
-				//~ NULL);
-			//~ gboolean res = gst_pad_set_caps(demux->srcpad, newcaps);
-			//~ char *caps_str = gst_caps_to_string(newcaps);
-			//~ g_print("[mjrdemux] Caps %s set to '%s'\n", (res ? "successfully" : "NOT"), caps_str);
-			//~ g_free(caps_str);
 			/* Done, change state */
 			demux->state = gst_mjr_demux_state_waiting_packet;
 			/* RTP packets are prefixed by a 8 bytes payload and a 2 bytes length header */
@@ -416,6 +424,9 @@ static GstFlowReturn gst_mjr_demux_chain(GstPad *pad, GstObject *parent, GstBuff
 				if(!demux->silent)
 					g_print("[mjrdemux][RTP] Computed timestamp: %" G_GUINT64_FORMAT "\n", demux->timestamp);
 				demux->last_ts = g_ntohl(rtp->timestamp);
+				/* Check if we need to overwrite the SSRC */
+				if(demux->out_ssrc)
+					rtp->ssrc = g_htonl(demux->out_ssrc);
 				/* Create a buffer and pass it along the pad */
 				GstBuffer *outbuf = gst_buffer_new_memdup(demux->buffer, demux->reading);
 				GST_BUFFER_TIMESTAMP(outbuf) = demux->timestamp;

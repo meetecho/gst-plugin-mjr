@@ -122,8 +122,8 @@ static void gst_mjr_mux_class_init(GstMjrMuxClass *klass) {
 	gobject_class->set_property = gst_mjr_mux_set_property;
 	gobject_class->get_property = gst_mjr_mux_get_property;
 
-	g_object_class_install_property (gobject_class, PROP_SILENT,
-		g_param_spec_boolean ("silent", "Silent", "Produce verbose output ?",
+	g_object_class_install_property(gobject_class, PROP_SILENT,
+		g_param_spec_boolean ("silent", "Silent", "Produce verbose output",
 			FALSE, G_PARAM_READWRITE));
 
 	gst_element_class_set_details_simple(gstelement_class,

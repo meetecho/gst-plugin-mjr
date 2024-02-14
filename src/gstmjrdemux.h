@@ -77,6 +77,9 @@ struct _GstMjrDemux {
 	gsize reading, offset, pending;
 	gint64 created, written;
 
+	/* Output */
+	guint32 out_ssrc;
+
 	/* Timing */
 	gboolean initialized;
 	guint32 last_ts;
