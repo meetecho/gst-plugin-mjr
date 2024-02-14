@@ -137,7 +137,7 @@ static void gst_mjr_mux_class_init(GstMjrMuxClass *klass) {
 
 /* Initialize the new element */
 static void gst_mjr_mux_init(GstMjrMux *mux) {
-	/* Reset private properties: we'll only set them when demuxing */
+	/* Reset private properties: we'll only set them when muxing */
 	mux->initialized = FALSE;
 	mux->video = FALSE;
 	mux->codec = 0;
@@ -238,12 +238,12 @@ static gboolean gst_mjr_mux_sink_event(GstPad *pad, GstObject *parent, GstEvent 
 	return ret;
 }
 
-/* Chain function, where we actually demux buffers to RTP packets */
+/* Chain function, where we actually mux RTP packets to MJR buffers */
 static GstFlowReturn gst_mjr_mux_chain(GstPad *pad, GstObject *parent, GstBuffer *buf) {
 	GstMjrMux *mux = GST_MJR_MUX(parent);
 	/* Write to the MJR container */
 	GstFlowReturn ret = GST_FLOW_OK;
-	if(!demux->silent)
+	if(!mux->silent)
 		g_print("[mjrmux] Got buffer of %zu bytes\n", gst_buffer_get_size(buf));
 	if(!mux->initialized) {
 		/* We still need to create the main header, do it now */
