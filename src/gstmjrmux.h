@@ -62,7 +62,10 @@ struct _GstMjrMux {
 	gboolean initialized;
 	gboolean video;
 	int codec;
-	gint64 created;
+	gint64 created, written;
+
+	/* Timing */
+	guint64 first_ts;
 
 	/* Pads */
 	GstPad *sinkpad, *srcpad;

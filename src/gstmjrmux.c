@@ -123,8 +123,8 @@ static void gst_mjr_mux_class_init(GstMjrMuxClass *klass) {
 	gobject_class->get_property = gst_mjr_mux_get_property;
 
 	g_object_class_install_property(gobject_class, PROP_SILENT,
-		g_param_spec_boolean ("silent", "Silent", "Produce verbose output",
-			FALSE, G_PARAM_READWRITE));
+		g_param_spec_boolean ("silent", "Silent", "Don't produce verbose output",
+			TRUE, G_PARAM_READWRITE | GST_PARAM_MUTABLE_PLAYING));
 
 	gst_element_class_set_details_simple(gstelement_class,
 		"Janus MJR Muxer",
@@ -138,6 +138,7 @@ static void gst_mjr_mux_class_init(GstMjrMuxClass *klass) {
 /* Initialize the new element */
 static void gst_mjr_mux_init(GstMjrMux *mux) {
 	/* Reset private properties: we'll only set them when muxing */
+	mux->silent = TRUE;
 	mux->initialized = FALSE;
 	mux->video = FALSE;
 	mux->codec = 0;
@@ -248,16 +249,17 @@ static GstFlowReturn gst_mjr_mux_chain(GstPad *pad, GstObject *parent, GstBuffer
 	if(!mux->initialized) {
 		/* We still need to create the main header, do it now */
 		mux->initialized = TRUE;
+		mux->written = g_get_real_time();
+		mux->first_ts = GST_BUFFER_TIMESTAMP(buf);
 		GstBuffer *outbuf = gst_buffer_new_memdup(header, strlen(header));
 		GstFlowReturn res = gst_pad_push(mux->srcpad, outbuf);
 		/* Create a JSON header */
 		json_t *info = json_object();
-		/* FIXME Codecs should be configurable in the future */
 		const gchar *type = mux->video ? "v" : "a";
 		json_object_set_new(info, "t", json_string(type));
 		json_object_set_new(info, "c", json_string(gst_mjr_codec_string(mux->codec)));
 		json_object_set_new(info, "s", json_integer(mux->created));
-		json_object_set_new(info, "u", json_integer(g_get_real_time()));
+		json_object_set_new(info, "u", json_integer(mux->written));
 		gchar *info_text = json_dumps(info, JSON_PRESERVE_ORDER);
 		json_decref(info);
 		if(info_text == NULL) {
@@ -279,8 +281,12 @@ static GstFlowReturn gst_mjr_mux_chain(GstPad *pad, GstObject *parent, GstBuffer
 	/* Write the RTP packet to the file, starting from the prefix */
 	GstBuffer *outbuf = gst_buffer_new_memdup(frame_header, strlen(frame_header));
 	ret |= gst_pad_push(mux->srcpad, outbuf);
-	guint32 padding = 0;	/* FIXME We should add the write timestamp too */
-	outbuf = gst_buffer_new_memdup(&padding, sizeof(padding));
+	/* Prepare a received time */
+	guint64 ts = GST_BUFFER_TIMESTAMP(buf);
+	guint64 recvd = (ts - mux->first_ts)/1000000;
+	guint32 recvd32 = recvd;
+	recvd32 = g_htonl(recvd32);
+	outbuf = gst_buffer_new_memdup(&recvd32, sizeof(recvd32));
 	ret |= gst_pad_push(mux->srcpad, outbuf);
 	/* Write the size of the RTP packet */
 	guint16 len = gst_buffer_get_size(buf);

@@ -118,13 +118,13 @@ static void gst_mjr_demux_class_init(GstMjrDemuxClass *klass) {
 	gobject_class->get_property = gst_mjr_demux_get_property;
 
 	g_object_class_install_property (gobject_class, PROP_SILENT,
-		g_param_spec_boolean("silent", "Silent", "Produce verbose output",
-			FALSE, G_PARAM_READWRITE));
+		g_param_spec_boolean ("silent", "Silent", "Don't produce verbose output",
+			TRUE, G_PARAM_READWRITE | GST_PARAM_MUTABLE_PLAYING));
 	g_object_class_install_property (gobject_class, PROP_SSRC,
-		g_param_spec_uint("ssrc", "SSRC", "Use a specific SSRC for the outgoing RTP traffic, instead of the one in the MJR file",
+		g_param_spec_uint("ssrc", "SSRC", "Use a specific SSRC for the outgoing RTP traffic",
 			0, G_MAXUINT32, 0, G_PARAM_READWRITE));
 	g_object_class_install_property (gobject_class, PROP_RANDOM_SSRC,
-		g_param_spec_boolean("randomize-ssrc", "Random SSRC", "Use a random SSRC for the outgoing RTP traffic, instead of the one in the MJR file",
+		g_param_spec_boolean("randomize-ssrc", "Random SSRC", "Use a random SSRC for the outgoing RTP traffic",
 			FALSE, G_PARAM_WRITABLE));
 
 	gst_element_class_set_details_simple(gstelement_class,
